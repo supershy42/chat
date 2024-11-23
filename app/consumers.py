@@ -3,11 +3,13 @@ from django.contrib.auth import get_user_model
 from .models import ChatRoom, Message
 import json
 from . import services
-from asgiref.sync import async_to_sync
 
 User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
+    async def send_json(self, content):
+        await self.send(text_data=json.dumps(content))
+    
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['chatroom_id']
         self.room_group_name = f'chat_{self.room_name}'
@@ -50,7 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         
         chatroom.last_message = content
-        chatroom.save()
+        await chatroom.asave()
         
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -61,3 +63,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': str(message.timestamp)
             }
         )
+        
+    async def chat_message(self, event):
+        sender_id = event.get("sender_id")
+        message_content = event.get("content")
+        timestamp = event.get("timestamp")
+
+        await self.send_json({
+            "type": "chat.message",
+            "sender_id": sender_id,
+            "content": message_content,
+            "timestamp": timestamp
+        })
