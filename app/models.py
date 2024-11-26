@@ -8,6 +8,22 @@ class ChatRoom(models.Model):
     last_message = models.TextField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user1_id', 'user2_id'], name='unique_chatroom_pair'
+            ),
+            models.UniqueConstraint(
+                fields=['user2_id', 'user1_id'], name='unique_chatroom_pair_reverse'
+            ),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if self.user1_id > self.user2_id:
+            self.user1_id, self.user2_id = self.user2_id, self.user1_id
+        
+        super().save(*args, **kwargs)
+    
     def get_receiver_id(self, sender_id):
         if self.user1_id == sender_id:
             return self.user2_id

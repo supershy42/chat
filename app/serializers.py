@@ -16,6 +16,9 @@ class ChatRoomCreateSerializer(serializers.ModelSerializer):
 
         if not services.validate_users(user1_id, user2_id):
             raise serializers.ValidationError("users are invalid.")
+        
+        if services.chatroom_exist(user1_id, user2_id):
+            raise serializers.ValidationError("Chat room already exists.")
 
         return data
     
