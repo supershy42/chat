@@ -56,7 +56,7 @@ async def validate_message(data, chatroom):
     if int(chatroom_id) != chatroom.id:
         return error_response("Chatroom ID mismatch.")
 
-    if not is_user_in_chatroom(sender_id, chatroom):
+    if not await is_user_in_chatroom(sender_id, chatroom):
         return error_response("Sender is not a participant in the chatroom.")
 
     return None
