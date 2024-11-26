@@ -14,7 +14,7 @@ class ChatRoomCreateSerializer(serializers.ModelSerializer):
         user1_id = data['user1_id']
         user2_id = data['user2_id']
 
-        if services.validate_users(user1_id, user2_id):
+        if not services.validate_users(user1_id, user2_id):
             raise serializers.ValidationError("users are invalid.")
 
         return data
