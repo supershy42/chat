@@ -6,16 +6,16 @@ from . import services
 class ChatConsumer(AsyncWebsocketConsumer):    
     async def connect(self):
         # NOTE: 인증된 user_id 가져와서 채팅방에 접근가능한지 검사해야 함.
-        self.room_name = self.scope['url_route']['kwargs']['chatroom_id']
-        self.room_group_name = f'chat_{self.room_name}'
+        self.chatroom_id = self.scope['url_route']['kwargs']['chatroom_id']
+        self.chatroom_group_name = f'chat_{self.chatroom_id}'
         
-        self.chatroom = await services.get_chatroom_by_id(self.room_name)
+        self.chatroom = await services.get_chatroom_by_id(self.chatroom_id)
         if not self.chatroom:
             await self.close()
             return
         
         await self.channel_layer.group_add(
-            self.room_group_name,
+            self.chatroom_group_name,
             self.channel_name
         )
         
@@ -23,7 +23,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
-            self.room_group_name,
+            self.chatroom_group_name,
             self.channel_name
         )
         
@@ -50,7 +50,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.chatroom.asave()
 
         await self.channel_layer.group_send(
-            self.room_group_name,
+            self.chatroom_group_name,
             {
                 'type': 'chat.message',
                 'sender_id': sender_id,

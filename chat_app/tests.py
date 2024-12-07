@@ -2,11 +2,10 @@ from django.test import TransactionTestCase
 from rest_framework.test import APITestCase, APIClient
 from unittest.mock import patch
 from django.urls import reverse, path
-from asgiref.sync import sync_to_async
 from channels.testing import WebsocketCommunicator
 from channels.routing import URLRouter
-from app.models import ChatRoom
-from app.consumers import ChatConsumer
+from chat_app.models import ChatRoom
+from chat_app.consumers import ChatConsumer
 
 
 class ChatRoomCreateViewTests(APITestCase):
@@ -16,7 +15,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.user1_id = 1
         self.user2_id = 2
 
-    @patch('app.services.is_valid_user')
+    @patch('chat_app.services.is_valid_user')
     def test_create_chatroom_with_valid_users(self, mock_is_valid_user):
         mock_is_valid_user.return_value = True
 
@@ -34,7 +33,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.assertEqual(chatroom.user2_id, self.user2_id)
         self.assertEqual(response.data['id'], chatroom.id)
 
-    @patch('app.services.is_valid_user')
+    @patch('chat_app.services.is_valid_user')
     def test_create_chatroom_with_invalid_users(self, mock_is_valid_user):
         mock_is_valid_user.return_value = False
 
@@ -49,7 +48,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.assertEqual(ChatRoom.objects.count(), 0)
         self.assertIn('users are invalid', str(response.data))
 
-    @patch('app.services.is_valid_user')
+    @patch('chat_app.services.is_valid_user')
     def test_create_chatroom_already_exists(self, mock_is_valid_user):
         mock_is_valid_user.return_value = True
 
@@ -80,7 +79,7 @@ class ChatConsumerTests(TransactionTestCase):
             path('ws/chat/<int:chatroom_id>/', ChatConsumer.as_asgi()),
         ])
 
-    @patch('app.services.is_valid_user')
+    @patch('chat_app.services.is_valid_user')
     async def test_chat_consumer_sends_and_receives_messages(self, mock_is_valid_user):
         mock_is_valid_user.return_value = True
 
@@ -105,7 +104,7 @@ class ChatConsumerTests(TransactionTestCase):
 
         await communicator.disconnect()
 
-    @patch('app.services.is_valid_user')
+    @patch('chat_app.services.is_valid_user')
     async def test_chat_consumer_rejects_invalid_sender(self, mock_is_valid_user):
         mock_is_valid_user.return_value = False
 
