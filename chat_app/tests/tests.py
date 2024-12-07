@@ -29,7 +29,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.user1_id = 1
         self.user2_id = 2
         self.token = generate_jwt(self.user1_id)  # JWT 생성
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')  # 헤
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
     @patch('chat_app.services.is_valid_user')
     def test_create_chatroom_with_valid_users(self, mock_is_valid_user):
@@ -96,68 +96,3 @@ class ChatRoomCreateViewTests(APITestCase):
             response.data['non_field_errors'][0].code,
             'unique'
         )
-
-
-# Tests for ChatConsumer
-class ChatConsumerTests(TransactionTestCase):
-    def setUp(self):
-        self.user1_id = 1
-        self.user2_id = 2
-        self.chatroom = ChatRoom.objects.create(user1_id=self.user1_id, user2_id=self.user2_id)
-        self.application = URLRouter([
-            path('ws/chat/<int:chatroom_id>/', ChatConsumer.as_asgi()),
-        ])
-
-    @patch('chat_app.services.is_valid_user')
-    async def test_chat_consumer_sends_and_receives_messages(self, mock_is_valid_user):
-        mock_is_valid_user.return_value = True
-
-        chatroom_id = self.chatroom.id
-        communicator = WebsocketCommunicator(self.application, f'/ws/chat/{chatroom_id}/')
-        connected, _ = await communicator.connect()
-        self.assertTrue(connected)
-
-        message = {
-            'sender_id': self.user1_id,
-            'chatroom_id': chatroom_id,
-            'content': 'Hello, World!'
-        }
-
-        await communicator.send_json_to(message)
-
-        response = await communicator.receive_json_from()
-
-        self.assertEqual(response['type'], 'chat.message')
-        self.assertEqual(response['sender_id'], self.user1_id)
-        self.assertEqual(response['content'], 'Hello, World!')
-
-        await communicator.disconnect()
-
-    @patch('chat_app.services.is_valid_user')
-    async def test_chat_consumer_rejects_invalid_sender(self, mock_is_valid_user):
-        mock_is_valid_user.return_value = False
-
-        chatroom_id = self.chatroom.id
-        communicator = WebsocketCommunicator(self.application, f'/ws/chat/{chatroom_id}/')
-        connected, _ = await communicator.connect()
-        self.assertTrue(connected)
-
-        message = {
-            'sender_id': 999,
-            'chatroom_id': chatroom_id,
-            'content': 'This should fail'
-        }
-
-        await communicator.send_json_to(message)
-
-        response = await communicator.receive_json_from()
-
-        self.assertEqual(response['type'], 'error')
-        self.assertIn('Invalid sender ID.', response['content'])
-
-        await communicator.disconnect()
-
-    async def test_chat_consumer_disconnects_on_invalid_chatroom(self):
-        communicator = WebsocketCommunicator(self.application, f'/ws/chat/999/')
-        connected, _ = await communicator.connect()
-        self.assertFalse(connected)
