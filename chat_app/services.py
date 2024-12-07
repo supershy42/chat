@@ -49,24 +49,24 @@ async def validate_users(user1_id, user2_id):
 async def get_chatroom_by_id(chatroom_id):
     return await ChatRoom.objects.filter(id=chatroom_id).afirst()
 
-def is_user_in_chatroom(user_id, chatroom):
+async def is_user_in_chatroom(user_id, chatroom):
     return user_id in [chatroom.user1_id, chatroom.user2_id]
 
 async def validate_message(data):
     content = data.get('content')
 
-    if missing_fields := check_missing_fields(content):
-        return error_response("Missing required fields: " + ", ".join(missing_fields))
+    if missing_fields := await check_missing_fields(content):
+        return await error_response("Missing required fields: " + ", ".join(missing_fields))
 
     return None
     
-def error_response(message):
+async def error_response(message):
     return {
         "type": "error",
         "content": message
     }
     
-def check_missing_fields(content):
+async def check_missing_fields(content):
     missing_fields = []
     if not content:
         missing_fields.append('content')

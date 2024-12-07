@@ -25,7 +25,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         self.user_name = self.user.get('nickname')
         
-        if not is_user_in_chatroom(self.user_id, self.chatroom):
+        if not await is_user_in_chatroom(self.user_id, self.chatroom):
             await self.close(code=3001) #3002: 해당 사용자가 채팅방 소속이 아님
             return
         
