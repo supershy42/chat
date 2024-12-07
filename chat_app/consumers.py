@@ -1,17 +1,30 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import Message
 import json
-from . import services
+from .services import (
+    get_chatroom_by_id,
+    is_valid_user,
+    is_user_in_chatroom,
+    validate_message,
+)
 
 class ChatConsumer(AsyncWebsocketConsumer):    
     async def connect(self):
-        # NOTE: 인증된 user_id 가져와서 채팅방에 접근가능한지 검사해야 함.
         self.chatroom_id = self.scope['url_route']['kwargs']['chatroom_id']
         self.chatroom_group_name = f'chat_{self.chatroom_id}'
         
-        self.chatroom = await services.get_chatroom_by_id(self.chatroom_id)
+        self.chatroom = await get_chatroom_by_id(self.chatroom_id)
         if not self.chatroom:
-            await self.close()
+            await self.close(code=3000) #3000: 해당 채팅방이 없음
+            return
+        
+        self.user_id = self.scope['user_id']
+        if not await is_valid_user(self.user_id):
+            await self.close(code=3001) #3001: 사용자가 유효하지 않음
+            return
+        
+        if not is_user_in_chatroom(self.user_id, self.chatroom):
+            await self.close(code=3001) #3002: 해당 사용자가 채팅방 소속이 아님
             return
         
         await self.channel_layer.group_add(
@@ -30,7 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         
-        error_response = await services.validate_message(data, self.chatroom)
+        error_response = await validate_message(data, self.chatroom)
         if error_response:
             await self.send_json(error_response)
             return

@@ -1,48 +1,47 @@
 import requests
 from .models import ChatRoom
 from django.db.models import Q
+import httpx
 
 USER_SERVICE_URL = "http://127.0.0.1:8000/api/user/"
 
-def is_valid_user(user_id):
+async def is_valid_user(user_id):
     try:
-        response = requests.get(f"{USER_SERVICE_URL}{user_id}/")
-        if response.status_code == 200:
-            return True
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{USER_SERVICE_URL}{user_id}/")
+            return response.status_code == 200
+    except httpx.RequestError:
         return False
-    except requests.RequestException as e:
-        return False
-    
-def chatroom_exist(user1_id, user2_id):
-    return ChatRoom.objects.filter(
+
+async def chatroom_exist(user1_id, user2_id):
+    return await ChatRoom.objects.filter(
         Q(user1_id=user1_id, user2_id=user2_id) |
         Q(user1_id=user2_id, user2_id=user1_id)
-    ).exists()
+    ).aexists()
     
-def create_chatroom(user1_id, user2_id):
-    if chatroom_exist(user1_id, user2_id):
+async def create_chatroom(user1_id, user2_id):
+    if await chatroom_exist(user1_id, user2_id):
         raise ValueError("Chat room already exists.")
     
-    chatroom = ChatRoom.objects.create(user1_id=user1_id, user2_id=user2_id)
+    chatroom = await ChatRoom.objects.acreate(user1_id=user1_id, user2_id=user2_id)
     return chatroom
 
-def validate_users(user1_id, user2_id):
+async def validate_users(user1_id, user2_id):
     if user1_id == user2_id:
         return False
-    if not is_valid_user(user1_id):
+    if not await is_valid_user(user1_id):
         return False
-    if not is_valid_user(user2_id):
+    if not await is_valid_user(user2_id):
         return False
     return True
 
 async def get_chatroom_by_id(chatroom_id):
     return await ChatRoom.objects.filter(id=chatroom_id).afirst()
 
-async def is_user_in_chatroom(user_id, chatroom):
+def is_user_in_chatroom(user_id, chatroom):
     return user_id in [chatroom.user1_id, chatroom.user2_id]
 
 async def validate_message(data, chatroom):
-    # NOTE: 인증된 user_id로 검사하게 수정해야 함.
     sender_id = data.get('sender_id')
     chatroom_id = data.get('chatroom_id')
     content = data.get('content')
@@ -50,13 +49,13 @@ async def validate_message(data, chatroom):
     if missing_fields := check_missing_fields(sender_id, chatroom_id, content):
         return error_response("Missing required fields: " + ", ".join(missing_fields))
 
-    if not is_valid_user(sender_id):
+    if not await is_valid_user(sender_id):
         return error_response("Invalid sender ID.")
 
     if int(chatroom_id) != chatroom.id:
         return error_response("Chatroom ID mismatch.")
 
-    if not await is_user_in_chatroom(sender_id, chatroom):
+    if not is_user_in_chatroom(sender_id, chatroom):
         return error_response("Sender is not a participant in the chatroom.")
 
     return None
