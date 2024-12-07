@@ -3,7 +3,7 @@ from .models import Message
 import json
 from .services import (
     get_chatroom_by_id,
-    is_valid_user,
+    get_user,
     is_user_in_chatroom,
     validate_message,
 )
@@ -19,9 +19,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         
         self.user_id = self.scope['user_id']
-        if not await is_valid_user(self.user_id):
+        self.user = await get_user(self.user_id)
+        if not self.user:
             await self.close(code=3001) #3001: 사용자가 유효하지 않음
             return
+        self.user_name = self.user.get('nickname')
         
         if not is_user_in_chatroom(self.user_id, self.chatroom):
             await self.close(code=3001) #3002: 해당 사용자가 채팅방 소속이 아님
@@ -41,20 +43,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        
-        error_response = await validate_message(data, self.chatroom)
+        data = None
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            await self.send_json({"error": "Invalid JSON format"})
+            return
+            
+        error_response = await validate_message(data)
         if error_response:
             await self.send_json(error_response)
             return
         
-        sender_id = data['sender_id']
         content = data['content']
-        receiver_id = self.chatroom.get_receiver_id(sender_id)
+        receiver_id = self.chatroom.get_receiver_id(self.user_id)
 
         message = await Message.objects.acreate(
             chatroom=self.chatroom,
-            sender_id=sender_id,
+            sender_id=self.user_id,
             receiver_id=receiver_id,
             content=content
         )
@@ -66,20 +72,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.chatroom_group_name,
             {
                 'type': 'chat.message',
-                'sender_id': sender_id,
+                'sender_name': self.user_name,
                 'content': content,
                 'timestamp': str(message.timestamp)
             }
         )
         
     async def chat_message(self, event):
-        sender_id = event.get("sender_id")
+        sender_name = event.get("sender_name")
         message_content = event.get("content")
         timestamp = event.get("timestamp")
 
         await self.send_json({
             "type": "chat.message",
-            "sender_id": sender_id,
+            "sender_name": sender_name,
             "content": message_content,
             "timestamp": timestamp
         })

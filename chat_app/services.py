@@ -2,8 +2,19 @@ import requests
 from .models import ChatRoom
 from django.db.models import Q
 import httpx
+import aiohttp
 
 USER_SERVICE_URL = "http://127.0.0.1:8000/api/user/"
+
+async def get_user(user_id):
+    user_service_url = f'{USER_SERVICE_URL}{user_id}/'
+    # headers = {'Authorization': f'Bearer {token}'}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(user_service_url, timeout=10) as response:
+            if response.status == 200:
+                return await response.json()
+            return None
 
 async def is_valid_user(user_id):
     try:
@@ -41,22 +52,11 @@ async def get_chatroom_by_id(chatroom_id):
 def is_user_in_chatroom(user_id, chatroom):
     return user_id in [chatroom.user1_id, chatroom.user2_id]
 
-async def validate_message(data, chatroom):
-    sender_id = data.get('sender_id')
-    chatroom_id = data.get('chatroom_id')
+async def validate_message(data):
     content = data.get('content')
 
-    if missing_fields := check_missing_fields(sender_id, chatroom_id, content):
+    if missing_fields := check_missing_fields(content):
         return error_response("Missing required fields: " + ", ".join(missing_fields))
-
-    if not await is_valid_user(sender_id):
-        return error_response("Invalid sender ID.")
-
-    if int(chatroom_id) != chatroom.id:
-        return error_response("Chatroom ID mismatch.")
-
-    if not is_user_in_chatroom(sender_id, chatroom):
-        return error_response("Sender is not a participant in the chatroom.")
 
     return None
     
@@ -66,12 +66,8 @@ def error_response(message):
         "content": message
     }
     
-def check_missing_fields(sender_id, chatroom_id, content):
+def check_missing_fields(content):
     missing_fields = []
-    if not sender_id:
-        missing_fields.append('sender_id')
-    if not chatroom_id:
-        missing_fields.append('chatroom_id')
     if not content:
         missing_fields.append('content')
     return missing_fields
