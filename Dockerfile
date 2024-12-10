@@ -1,7 +1,7 @@
 # srcs/chat/Dockerfile
 
 # Python 이미지 사용
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -11,7 +11,7 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
 # 애플리케이션 코드 복사
-COPY ./config ./app
+COPY . ./app
 
 # Django 서버 실행
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8002"]
