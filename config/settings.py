@@ -24,10 +24,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'chat_app',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
-    'config.middlewares.CustomHttpMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # 반드시 CommonMiddleware보다 위에 있어야 함
+    'config.middleware.CustomHttpMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -93,7 +95,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -122,3 +124,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True

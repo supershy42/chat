@@ -5,7 +5,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 
 django_asgi_app = get_asgi_application()
 
-from config.middlewares import CustomWsMiddleware
+from config.middleware import CustomWsMiddleware
 from chat_app.routing import websocket_urlpatterns
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
