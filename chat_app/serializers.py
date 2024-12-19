@@ -14,8 +14,9 @@ class ChatRoomCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         user1_id = data['user1_id']
         user2_id = data['user2_id']
+        token = self.context['token']
 
-        if not async_to_sync(services.validate_users)(user1_id, user2_id):
+        if not async_to_sync(services.validate_users)(user1_id, user2_id, token):
             raise serializers.ValidationError("users are invalid.")
         
         if async_to_sync(services.chatroom_exist)(user1_id, user2_id):

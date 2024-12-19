@@ -125,5 +125,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
+# ENV
+from decouple import config
+
+USER_SERVICE_URL = config("USER_SERVICE_URL")

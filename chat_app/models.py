@@ -4,17 +4,21 @@ from django.db import models
 class ChatRoom(models.Model):
     user1_id = models.BigIntegerField()
     user2_id = models.BigIntegerField()
-    
-    last_message = models.TextField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    @property
+    def last_message(self):
+        return self.message_set.order_by('-timestamp').first()
     
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['user1_id', 'user2_id'], name='unique_chatroom_pair'
+                fields=['user1_id', 'user2_id'],
+                name='unique_chatroom_pair',
             ),
             models.UniqueConstraint(
-                fields=['user2_id', 'user1_id'], name='unique_chatroom_pair_reverse'
+                fields=['user2_id', 'user1_id'],
+                name='unique_chatroom_pair_reverse'
             ),
         ]
     
@@ -32,7 +36,15 @@ class ChatRoom(models.Model):
 class Message(models.Model):
     chatroom = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
     sender_id = models.BigIntegerField()
-    receiver_id = models.BigIntegerField()
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    
+    @property
+    def receiver_id(self):
+        return self.chatroom.get_receiver_id(self.sender_id)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['timestamp']),
+        ]
