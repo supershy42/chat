@@ -1,11 +1,7 @@
-from django.test import TransactionTestCase
 from rest_framework.test import APITestCase, APIClient
 from unittest.mock import patch
-from django.urls import reverse, path
-from channels.testing import WebsocketCommunicator
-from channels.routing import URLRouter
+from django.urls import reverse
 from chat_app.models import ChatRoom
-from chat_app.consumers import ChatConsumer
 import jwt
 from datetime import datetime, timedelta
 
@@ -20,8 +16,6 @@ def generate_jwt(user_id):
     }
     return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
-
-
 class ChatRoomCreateViewTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -32,7 +26,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
     @patch('chat_app.services.get_user')
-    def test_create_chatroom_with_valid_users(self, mock_):
+    def test_create_chatroom_with_valid_users(self, mock_get_user):
         mock_get_user.return_value = True
 
         data = {
