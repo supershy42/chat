@@ -26,12 +26,12 @@ async def create_chatroom(user1_id, user2_id):
     chatroom = await ChatRoom.objects.acreate(user1_id=user1_id, user2_id=user2_id)
     return chatroom
 
-async def validate_users(user1_id, user2_id):
+async def validate_users(user1_id, user2_id, token):
     if user1_id == user2_id:
         return False
-    if not await get_user(user1_id):
+    if not await get_user(user1_id, token):
         return False
-    if not await get_user(user2_id):
+    if not await get_user(user2_id, token):
         return False
     return True
 
