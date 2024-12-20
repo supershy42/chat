@@ -2,8 +2,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import Message
 import json
 from .services import (
+    UserService,
     get_chatroom_by_id,
-    get_user,
     is_user_in_chatroom,
 )
 from .close_codes import CloseCode
@@ -20,7 +20,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         
         self.user_id = self.scope['user_id']
-        self.user = await get_user(self.user_id, self.scope['token'])
+        self.user = await UserService.get_user(self.user_id, self.scope['token'])
         if not self.user:
             await self.close(code=CloseCode.USER_NOT_FOUND)
             return
@@ -48,15 +48,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
         except json.JSONDecodeError:
-            await self.send_error("Invalid JSON format")
+            await self.send_error("Invalid JSON format.")
             return
             
         type = data.get('type')
         if type == 'chat':
             await self.handle_chat(data)
+        else:
+            await self.send_error("Invalid message type.")
     
     async def handle_chat(self, data):
-        content = data['content']
+        content = data.get('content')
+        if not content:
+            await self.send_error("content is required.")
+            return
 
         message = await Message.objects.acreate(
             chatroom=self.chatroom,
@@ -89,7 +94,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(content))
         
     async def send_error(self, message):
-        self.send_json({
+        await self.send_json({
             "type": "error",
             "message": message
         })
