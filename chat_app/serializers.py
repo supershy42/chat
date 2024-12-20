@@ -3,13 +3,20 @@ from asgiref.sync import async_to_sync
 from .models import ChatRoom
 from . import services
 
-class ChatRoomCreateSerializer(serializers.ModelSerializer):
-    user1_id = serializers.IntegerField()
-    user2_id = serializers.IntegerField()
+class ChatRoomSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    user1_id = serializers.IntegerField(write_only=True)
+    user2_id = serializers.IntegerField(write_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    last_message = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = ChatRoom
-        fields = ['id', 'user1_id', 'user2_id', 'last_message', 'updated_at']
+        fields = ['id', 'user1_id', 'user2_id', 'updated_at', 'last_message']
+        
+    def get_last_message(self, obj):
+        last_message = obj.last_message
+        return last_message.content if last_message else None
         
     def validate(self, data):
         user1_id = data['user1_id']
