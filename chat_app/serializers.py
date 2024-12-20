@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from asgiref.sync import async_to_sync
-from .models import ChatRoom
+from .models import ChatRoom, Message
 from . import services
 
 class ChatRoomSerializer(serializers.ModelSerializer):
@@ -36,3 +36,11 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             user1_id=validated_data['user1_id'],
             user2_id=validated_data['user2_id']
         )
+        
+class MessageSerializer(serializers.ModelSerializer):
+    avatar = serializers.CharField(read_only=True)
+    sender = serializers.CharField(read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'sender', 'avatar', 'content', 'timestamp']
