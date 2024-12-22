@@ -65,6 +65,19 @@ async def error_response(message):
         "type": "error",
         "content": message
     }
+
+def delete_chatroom(user1_id, user2_id):
+    chatroom = ChatRoom.objects.filter(
+        Q(user1_id=user1_id, user2_id=user2_id) |
+        Q(user1_id=user2_id, user2_id=user1_id)
+    ).first()
+    
+    if not chatroom:
+        return False
+
+    # 채팅방 삭제
+    chatroom.delete()
+    return True
     
 async def check_missing_fields(content):
     missing_fields = []
