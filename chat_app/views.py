@@ -1,9 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ChatRoomCreateSerializer
-from .serializers import MessageSerializer
-from .services import ChatRoomService, delete_chatroom, validate_users, chatroom_exist
+from .serializers import ChatRoomSerializer, MessageSerializer
+from .services import ChatRoomService, is_user_in_chatroom
 from django.shortcuts import get_object_or_404
 from .models import ChatRoom
 from asgiref.sync import async_to_sync
@@ -34,14 +33,11 @@ class ChatRoomMessageListView(APIView):
 class ChatRoomDeleteView(APIView):
     def post(self, request):
         user_id = request.user_id
-        friend_id = request.data.get('friend_id')
-        token = request.token
+        chatroom_id = request.data.get('chatroom_id')
+        chatroom = get_object_or_404(ChatRoom, id=chatroom_id)
         
-        if not async_to_sync(validate_users)(user_id, friend_id, token):
-            return Response({"error": "users are invalid."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 삭제 실행
-        result = delete_chatroom(user_id, friend_id)
-        if not result:
-            return Response({"error": "Chat room does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        if not is_user_in_chatroom(user_id, chatroom):
+            return Response({"error": "User is not in chat room."}, status=status.HTTP_400_BAD_REQUEST)     
+    
+        chatroom.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
