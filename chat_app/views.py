@@ -10,7 +10,7 @@ from asgiref.sync import async_to_sync
 
 class ChatRoomCreateView(APIView):
     def post(self, request):
-        serializer = ChatRoomCreateSerializer(data=request.data)
+        serializer = ChatRoomSerializer(data=request.data, context={'token': request.token})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
