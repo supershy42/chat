@@ -24,11 +24,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'chat_app',
-    'corsheaders',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware', # 반드시 CommonMiddleware보다 위에 있어야 함
     'config.middleware.CustomHttpMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -99,7 +97,7 @@ TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)

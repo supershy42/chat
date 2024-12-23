@@ -25,7 +25,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.token = generate_jwt(self.user1_id)  # JWT 생성
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
-    @patch('chat_app.services.get_user')
+    @patch('chat_app.services.UserService.get_user')
     def test_create_chatroom_with_valid_users(self, mock_get_user):
         mock_get_user.return_value = True
 
@@ -56,7 +56,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.assertEqual(ChatRoom.objects.count(), 0)
 
 
-    @patch('chat_app.services.get_user')
+    @patch('chat_app.services.UserService.get_user')
     def test_create_chatroom_with_invalid_users(self, mock_get_user):
         mock_get_user.return_value = False
 
@@ -71,7 +71,7 @@ class ChatRoomCreateViewTests(APITestCase):
         self.assertEqual(ChatRoom.objects.count(), 0)
         self.assertIn('users are invalid', str(response.data))
 
-    @patch('chat_app.services.get_user')
+    @patch('chat_app.services.UserService.get_user')
     def test_create_chatroom_already_exists(self, mock_get_user):
         mock_get_user.return_value = True
 
