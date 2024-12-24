@@ -87,7 +87,7 @@ async def validate_users(user1_id, user2_id, token):
 async def get_chatroom_by_id(chatroom_id):
     return await ChatRoom.objects.filter(id=chatroom_id).afirst()
 
-async def is_user_in_chatroom(user_id, chatroom):
+async def is_user_in_chatroom(user_id, chatroom: ChatRoom):
     return user_id in [chatroom.user1_id, chatroom.user2_id]
     
 async def error_response(message):
