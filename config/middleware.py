@@ -3,6 +3,7 @@ import json
 from django.utils.deprecation import MiddlewareMixin
 from channels.middleware import BaseMiddleware
 from django.http import JsonResponse
+from urllib.parse import parse_qs
 
 
 class CustomHttpMiddleware(MiddlewareMixin):
@@ -21,7 +22,7 @@ class CustomHttpMiddleware(MiddlewareMixin):
 
 class CustomWsMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
-        token = get_jwt(scope['headers'])
+        token = get_jwt(scope)
         if not token:
             return await self.reject_request(send, "Authentication token missing.")
         
@@ -50,11 +51,8 @@ class CustomWsMiddleware(BaseMiddleware):
             "body": body,
         })
         
-def get_jwt(headers):
-    auth_header = dict(headers).get(b'authorization')
-    if auth_header:
-        auth_header = auth_header.decode()
-        prefix, token = auth_header.split(' ')
-        if prefix.lower() == 'bearer':
-            return token
-    return None
+def get_jwt(scope):
+    query_string = scope.get('query_string', b'').decode()
+    query_params = parse_qs(query_string)
+    token = query_params.get('token', [None])[0]
+    return token
