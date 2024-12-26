@@ -1,13 +1,23 @@
 from pathlib import Path
+from decouple import config
+
+# ENV
+SECRET_KEY = config("SECRET_KEY")
+DEBUG = config("DEBUG", cast=bool)
+
+USER_SERVICE_URL = config("USER_SERVICE_URL")
+
+REDIS_HOST = config('REDIS_HOST')
+REDIS_PORT = config('REDIS_PORT', cast=int)
+REDIS_DB = config('REDIS_DB', cast=int)
+REDIS_CAPACITY = config('REDIS_CAPACITY', cast=int)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)+g3db1$*nfv%f0p@kr9z4pzw$+n-9^*f8x61px0#iq1bhj+7j'
+SECRET_KEY = SECRET_KEY
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = DEBUG
 
 ALLOWED_HOSTS = []
 
@@ -118,12 +128,8 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "capacity": REDIS_CAPACITY, # 메시지 큐 용량
         },
     },
 }
-
-# ENV
-from decouple import config
-
-USER_SERVICE_URL = config("USER_SERVICE_URL")
