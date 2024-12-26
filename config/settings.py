@@ -1,13 +1,25 @@
 from pathlib import Path
+from decouple import config
+
+# ENV
+SECRET_KEY = config("SECRET_KEY")
+DEBUG = config("DEBUG", cast=bool)
+
+USER_SERVICE_URL = config("USER_SERVICE_URL")
+
+DATABASE_ENGINE = config('DATABASE_ENGINE', default='sqlite3')
+
+REDIS_HOST = config('REDIS_HOST')
+REDIS_PORT = config('REDIS_PORT', cast=int)
+REDIS_DB = config('REDIS_DB', cast=int)
+REDIS_CAPACITY = config('REDIS_CAPACITY', cast=int)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)+g3db1$*nfv%f0p@kr9z4pzw$+n-9^*f8x61px0#iq1bhj+7j'
+SECRET_KEY = SECRET_KEY
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = DEBUG
 
 ALLOWED_HOSTS = []
 
@@ -61,12 +73,26 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DATABASE_ENGINE == 'sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3'
+        }
     }
-}
+elif DATABASE_ENGINE == 'postgresql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('POSTGRES_DB', default=''),
+            'USER': config('POSTGRES_USER', default=''),
+            'PASSWORD': config('POSTGRES_PASSWORD', default=''),
+            'HOST': config('POSTGRES_HOST', default='localhost'),
+            'PORT': config('POSTGRES_PORT', default='5432'),
+        }
+    }
+else:
+    raise ValueError("Unsupported DATABASE_ENGINE value")
 
 
 # Password validation
@@ -118,12 +144,8 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "capacity": REDIS_CAPACITY, # 메시지 큐 용량
         },
     },
 }
-
-# ENV
-from decouple import config
-
-USER_SERVICE_URL = config("USER_SERVICE_URL")
