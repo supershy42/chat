@@ -7,6 +7,8 @@ DEBUG = config("DEBUG", cast=bool)
 
 USER_SERVICE_URL = config("USER_SERVICE_URL")
 
+DATABASE_ENGINE = config('DATABASE_ENGINE', default='sqlite3')
+
 REDIS_HOST = config('REDIS_HOST')
 REDIS_PORT = config('REDIS_PORT', cast=int)
 REDIS_DB = config('REDIS_DB', cast=int)
@@ -71,12 +73,26 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DATABASE_ENGINE == 'sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3'
+        }
     }
-}
+elif DATABASE_ENGINE == 'postgresql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('POSTGRES_DB', default=''),
+            'USER': config('POSTGRES_USER', default=''),
+            'PASSWORD': config('POSTGRES_PASSWORD', default=''),
+            'HOST': config('POSTGRES_HOST', default='localhost'),
+            'PORT': config('POSTGRES_PORT', default='5432'),
+        }
+    }
+else:
+    raise ValueError("Unsupported DATABASE_ENGINE value")
 
 
 # Password validation
