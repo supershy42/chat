@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from asgiref.sync import async_to_sync
 from .models import ChatRoom, Message
-from . import services
+from .services import ChatRoomService
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
@@ -23,13 +23,13 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         user2_id = data['user2_id']
         token = self.context['token']
 
-        if not async_to_sync(services.validate_users)(user1_id, user2_id, token):
+        if not async_to_sync(ChatRoomService.validate_users)(user1_id, user2_id, token):
             raise serializers.ValidationError("users are invalid.")
 
         return data
     
     def create(self, validated_data):
-        return async_to_sync(services.create_chatroom)(
+        return async_to_sync(ChatRoomService.create_chatroom)(
             user1_id=validated_data['user1_id'],
             user2_id=validated_data['user2_id']
         )
