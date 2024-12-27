@@ -1,11 +1,7 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import Message
 import json
-from .services import (
-    UserService,
-    get_chatroom_by_id,
-    is_user_in_chatroom,
-)
+from .services import UserService, ChatRoomService
 from .close_codes import CloseCode
 from django.utils.timezone import now
 
@@ -14,7 +10,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.chatroom_id = self.scope['url_route']['kwargs']['chatroom_id']
         self.chatroom_group_name = f'chat_{self.chatroom_id}'
         
-        self.chatroom = await get_chatroom_by_id(self.chatroom_id)
+        self.chatroom = await ChatRoomService.get_chatroom_by_id(self.chatroom_id)
         if not self.chatroom:
             await self.close(code=CloseCode.CHATROOM_NOT_FOUND)
             return
@@ -26,7 +22,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         self.user_name = self.user.get('nickname')
         
-        if not await is_user_in_chatroom(self.user_id, self.chatroom):
+        if not await ChatRoomService.is_user_in_chatroom(self.user_id, self.chatroom):
             await self.close(code=CloseCode.INVALID_USER)
             return
         

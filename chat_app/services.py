@@ -62,36 +62,35 @@ class ChatRoomService:
         profiles = await asyncio.gather(*tasks)
         return {profile['id']: profile for profile in profiles}
     
-async def chatroom_exist(user1_id, user2_id):
-    return await ChatRoom.objects.filter(
-        Q(user1_id=user1_id, user2_id=user2_id) |
-        Q(user1_id=user2_id, user2_id=user1_id)
-    ).aexists()
-    
-async def create_chatroom(user1_id, user2_id):
-    if await chatroom_exist(user1_id, user2_id):
-        raise ValueError("Chat room already exists.")
-    
-    chatroom = await ChatRoom.objects.acreate(user1_id=user1_id, user2_id=user2_id)
-    return chatroom
+    @staticmethod
+    async def chatroom_exist(user1_id, user2_id):
+        return await ChatRoom.objects.filter(
+            Q(user1_id=user1_id, user2_id=user2_id) |
+            Q(user1_id=user2_id, user2_id=user1_id)
+        ).aexists()
 
-async def validate_users(user1_id, user2_id, token):
-    if user1_id == user2_id:
-        return False
-    if not await UserService.get_user(user1_id, token):
-        return False
-    if not await UserService.get_user(user2_id, token):
-        return False
-    return True
+    @staticmethod    
+    async def create_chatroom(user1_id, user2_id):
+        if await ChatRoomService.chatroom_exist(user1_id, user2_id):
+            raise ValueError("Chat room already exists.")
+        
+        chatroom = await ChatRoom.objects.acreate(user1_id=user1_id, user2_id=user2_id)
+        return chatroom
 
-async def get_chatroom_by_id(chatroom_id):
-    return await ChatRoom.objects.filter(id=chatroom_id).afirst()
+    @staticmethod
+    async def validate_users(user1_id, user2_id, token):
+        if user1_id == user2_id:
+            return False
+        if not await UserService.get_user(user1_id, token):
+            return False
+        if not await UserService.get_user(user2_id, token):
+            return False
+        return True
 
-async def is_user_in_chatroom(user_id, chatroom: ChatRoom):
-    return user_id in [chatroom.user1_id, chatroom.user2_id]
-    
-async def error_response(message):
-    return {
-        "type": "error",
-        "content": message
-    }
+    @staticmethod
+    async def get_chatroom_by_id(chatroom_id):
+        return await ChatRoom.objects.filter(id=chatroom_id).afirst()
+
+    @staticmethod
+    async def is_user_in_chatroom(user_id, chatroom: ChatRoom):
+        return user_id in [chatroom.user1_id, chatroom.user2_id]
