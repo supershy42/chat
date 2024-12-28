@@ -21,6 +21,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=CloseCode.USER_NOT_FOUND)
             return
         self.user_name = self.user.get('nickname')
+        self.avatar = self.user.get('avatar')
         
         if not await ChatRoomService.is_user_in_chatroom(self.user_id, self.chatroom):
             await self.close(code=CloseCode.INVALID_USER)
@@ -70,6 +71,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'chat.message',
                 'sender_name': self.user_name,
+                'sender_avatar': self.avatar,
                 'content': content,
                 'timestamp': str(message.timestamp)
             }
@@ -82,6 +84,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send_json({
             "type": "chat.message",
             "sender_name": event.get("sender_name"),
+            "sender_avatar": event.get("sender_avatar"),
             "content": event.get("content"),
             "timestamp": event.get("timestamp")
         })
