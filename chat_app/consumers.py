@@ -4,6 +4,7 @@ import json
 from .services import UserService, ChatRoomService
 from .close_codes import CloseCode
 from django.utils.timezone import now
+from config.services import format_datetime
 
 class ChatConsumer(AsyncWebsocketConsumer):    
     async def connect(self):
@@ -21,6 +22,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=CloseCode.USER_NOT_FOUND)
             return
         self.user_name = self.user.get('nickname')
+        self.avatar = self.user.get('avatar')
         
         if not await ChatRoomService.is_user_in_chatroom(self.user_id, self.chatroom):
             await self.close(code=CloseCode.INVALID_USER)
@@ -69,9 +71,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.chatroom_group_name,
             {
                 'type': 'chat.message',
-                'sender_name': self.user_name,
+                'sender': self.user_name,
+                'avatar': self.avatar,
                 'content': content,
-                'timestamp': str(message.timestamp)
+                'timestamp': format_datetime(message.timestamp)
             }
         )
         
@@ -81,7 +84,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         await self.send_json({
             "type": "chat.message",
-            "sender_name": event.get("sender_name"),
+            "sender": event.get("sender"),
+            "avatar": event.get("avatar"),
             "content": event.get("content"),
             "timestamp": event.get("timestamp")
         })
