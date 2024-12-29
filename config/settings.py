@@ -21,7 +21,7 @@ SECRET_KEY = SECRET_KEY
 
 DEBUG = DEBUG
 
-ALLOWED_HOSTS = ['api-gateway', 'localhost']
+# ALLOWED_HOSTS = ['api-gateway', 'localhost']
 
 
 # Application definition
