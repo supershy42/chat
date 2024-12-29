@@ -55,3 +55,4 @@ typing_extensions==4.7.1
 urllib3==2.2.3
 yarl==1.18.3
 zope.interface==7.1.1
+psycopg==3.2.3
