@@ -1,78 +1,96 @@
-import requests
-from .models import ChatRoom
+from .models import ChatRoom, Message
 from django.db.models import Q
+import aiohttp
+from config.settings import USER_SERVICE_URL
+from rest_framework.exceptions import PermissionDenied
+import asyncio
+from asgiref.sync import sync_to_async
 
-USER_SERVICE_URL = "http://127.0.0.1:8000/api/user/"
-
-def is_valid_user(user_id):
-    try:
-        response = requests.get(f"{USER_SERVICE_URL}{user_id}/")
-        if response.status_code == 200:
-            return True
-        return False
-    except requests.RequestException as e:
-        return False
+class UserService:
+    @staticmethod
+    async def get_user(user_id, token):
+        user_service_url = f'{USER_SERVICE_URL}profile/{user_id}/'
+        headers = {'Authorization': f'Bearer {token}'}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(user_service_url, headers=headers, timeout=10) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+        
+class ChatRoomService:
+    DEFAULT_PAGE_SIZE = 50
     
-def chatroom_exist(user1_id, user2_id):
-    return ChatRoom.objects.filter(
-        Q(user1_id=user1_id, user2_id=user2_id) |
-        Q(user1_id=user2_id, user2_id=user1_id)
-    ).exists()
+    @staticmethod
+    def check_user_permission(chatroom, user_id):
+        if user_id not in [chatroom.user1_id, chatroom.user2_id]:
+            raise PermissionDenied("The user does not have access to the chat room.")
+        
+    @staticmethod
+    async def get_messages(chatroom, last_loaded_message_id=None, limit=DEFAULT_PAGE_SIZE):
+        query = Message.objects.filter(chatroom=chatroom)
+        if last_loaded_message_id:
+            query = query.filter(id__lt=last_loaded_message_id)
+        messages = await sync_to_async(list)(query.order_by('-id')[:limit])
+        messages.reverse()
+        return messages
     
-def create_chatroom(user1_id, user2_id):
-    if chatroom_exist(user1_id, user2_id):
-        raise ValueError("Chat room already exists.")
+    @staticmethod
+    async def add_avatars_to_messages(messages, token):
+        sender_ids = {message.sender_id for message in messages}
+        profiles = await ChatRoomService.fetch_profiles(sender_ids, token)
+        
+        result = []
+        for message in messages:
+            profile = profiles.get(message.sender_id)
+            result.append({
+                "id": message.id,
+                "sender": profile.get('nickname'),
+                "avatar": profile.get('avatar'),
+                "content": message.content,
+                "timestamp": message.timestamp
+            })
+        
+        return result
     
-    chatroom = ChatRoom.objects.create(user1_id=user1_id, user2_id=user2_id)
-    return chatroom
-
-def validate_users(user1_id, user2_id):
-    if user1_id == user2_id:
-        return False
-    if not is_valid_user(user1_id):
-        return False
-    if not is_valid_user(user2_id):
-        return False
-    return True
-
-async def get_chatroom_by_id(chatroom_id):
-    return await ChatRoom.objects.filter(id=chatroom_id).afirst()
-
-async def is_user_in_chatroom(user_id, chatroom):
-    return user_id in [chatroom.user1_id, chatroom.user2_id]
-
-async def validate_message(data, chatroom):
-    # NOTE: 인증된 user_id로 검사하게 수정해야 함.
-    sender_id = data.get('sender_id')
-    chatroom_id = data.get('chatroom_id')
-    content = data.get('content')
-
-    if missing_fields := check_missing_fields(sender_id, chatroom_id, content):
-        return error_response("Missing required fields: " + ", ".join(missing_fields))
-
-    if not is_valid_user(sender_id):
-        return error_response("Invalid sender ID.")
-
-    if int(chatroom_id) != chatroom.id:
-        return error_response("Chatroom ID mismatch.")
-
-    if not await is_user_in_chatroom(sender_id, chatroom):
-        return error_response("Sender is not a participant in the chatroom.")
-
-    return None
+    @staticmethod
+    async def fetch_profiles(sender_ids, token):
+        tasks = [
+            UserService.get_user(user_id, token) for user_id in sender_ids
+        ]
+        
+        profiles = await asyncio.gather(*tasks)
+        return {profile['id']: profile for profile in profiles}
     
-def error_response(message):
-    return {
-        "type": "error",
-        "content": message
-    }
-    
-def check_missing_fields(sender_id, chatroom_id, content):
-    missing_fields = []
-    if not sender_id:
-        missing_fields.append('sender_id')
-    if not chatroom_id:
-        missing_fields.append('chatroom_id')
-    if not content:
-        missing_fields.append('content')
-    return missing_fields
+    @staticmethod
+    async def chatroom_exist(user1_id, user2_id):
+        return await ChatRoom.objects.filter(
+            Q(user1_id=user1_id, user2_id=user2_id) |
+            Q(user1_id=user2_id, user2_id=user1_id)
+        ).aexists()
+
+    @staticmethod    
+    async def create_chatroom(user1_id, user2_id):
+        if await ChatRoomService.chatroom_exist(user1_id, user2_id):
+            raise ValueError("Chat room already exists.")
+        
+        chatroom = await ChatRoom.objects.acreate(user1_id=user1_id, user2_id=user2_id)
+        return chatroom
+
+    @staticmethod
+    async def validate_users(user1_id, user2_id, token):
+        if user1_id == user2_id:
+            return False
+        if not await UserService.get_user(user1_id, token):
+            return False
+        if not await UserService.get_user(user2_id, token):
+            return False
+        return True
+
+    @staticmethod
+    async def get_chatroom_by_id(chatroom_id):
+        return await ChatRoom.objects.filter(id=chatroom_id).afirst()
+
+    @staticmethod
+    async def is_user_in_chatroom(user_id, chatroom: ChatRoom):
+        return user_id in [chatroom.user1_id, chatroom.user2_id]

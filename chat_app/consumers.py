@@ -1,17 +1,31 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import Message
 import json
-from . import services
+from .services import UserService, ChatRoomService
+from .close_codes import CloseCode
+from django.utils.timezone import now
+from config.services import format_datetime
 
 class ChatConsumer(AsyncWebsocketConsumer):    
     async def connect(self):
-        # NOTE: 인증된 user_id 가져와서 채팅방에 접근가능한지 검사해야 함.
         self.chatroom_id = self.scope['url_route']['kwargs']['chatroom_id']
         self.chatroom_group_name = f'chat_{self.chatroom_id}'
         
-        self.chatroom = await services.get_chatroom_by_id(self.chatroom_id)
+        self.chatroom = await ChatRoomService.get_chatroom_by_id(self.chatroom_id)
         if not self.chatroom:
-            await self.close()
+            await self.close(code=CloseCode.CHATROOM_NOT_FOUND)
+            return
+        
+        self.user_id = self.scope['user_id']
+        self.user = await UserService.get_user(self.user_id, self.scope['token'])
+        if not self.user:
+            await self.close(code=CloseCode.USER_NOT_FOUND)
+            return
+        self.user_name = self.user.get('nickname')
+        self.avatar = self.user.get('avatar')
+        
+        if not await ChatRoomService.is_user_in_chatroom(self.user_id, self.chatroom):
+            await self.close(code=CloseCode.INVALID_USER)
             return
         
         await self.channel_layer.group_add(
@@ -28,48 +42,59 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        
-        error_response = await services.validate_message(data, self.chatroom)
-        if error_response:
-            await self.send_json(error_response)
+        data = None
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            await self.send_error("Invalid JSON format.")
             return
-        
-        sender_id = data['sender_id']
-        content = data['content']
-        receiver_id = self.chatroom.get_receiver_id(sender_id)
+            
+        type = data.get('type')
+        if type == 'chat':
+            await self.handle_chat(data)
+        else:
+            await self.send_error("Invalid message type.")
+    
+    async def handle_chat(self, data):
+        content = data.get('content')
+        if not content:
+            await self.send_error("content is required.")
+            return
 
         message = await Message.objects.acreate(
             chatroom=self.chatroom,
-            sender_id=sender_id,
-            receiver_id=receiver_id,
+            sender_id=self.user_id,
             content=content
         )
-
-        self.chatroom.last_message = content
-        await self.chatroom.asave()
 
         await self.channel_layer.group_send(
             self.chatroom_group_name,
             {
                 'type': 'chat.message',
-                'sender_id': sender_id,
+                'sender': self.user_name,
+                'avatar': self.avatar,
                 'content': content,
-                'timestamp': str(message.timestamp)
+                'timestamp': format_datetime(message.timestamp)
             }
         )
         
+        self.chatroom.updated_at = now()
+        await self.chatroom.asave(update_fields=['updated_at'])
+        
     async def chat_message(self, event):
-        sender_id = event.get("sender_id")
-        message_content = event.get("content")
-        timestamp = event.get("timestamp")
-
         await self.send_json({
             "type": "chat.message",
-            "sender_id": sender_id,
-            "content": message_content,
-            "timestamp": timestamp
+            "sender": event.get("sender"),
+            "avatar": event.get("avatar"),
+            "content": event.get("content"),
+            "timestamp": event.get("timestamp")
         })
         
     async def send_json(self, content):
         await self.send(text_data=json.dumps(content))
+        
+    async def send_error(self, message):
+        await self.send_json({
+            "type": "error",
+            "message": message
+        })
