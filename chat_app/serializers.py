@@ -2,19 +2,21 @@ from rest_framework import serializers
 from asgiref.sync import async_to_sync
 from .models import ChatRoom, Message
 from .services import ChatRoomService
+from drf_spectacular.utils import extend_schema_field
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)
-    user1_id = serializers.IntegerField(write_only=True)
-    user2_id = serializers.IntegerField(write_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
-    last_message = serializers.SerializerMethodField(read_only=True)
+    id = serializers.IntegerField(read_only=True, help_text="채팅방의 고유 식별자")
+    user1_id = serializers.IntegerField(write_only=True, help_text="채팅방의 첫 번째 사용자 ID")
+    user2_id = serializers.IntegerField(write_only=True, help_text="채팅방의 두 번째 사용자 ID")
+    updated_at = serializers.DateTimeField(read_only=True, help_text="채팅방이 마지막으로 업데이트된 시간")
+    last_message = serializers.SerializerMethodField(read_only=True, help_text="채팅방의 마지막 메시지 내용")
     
     class Meta:
         model = ChatRoom
         fields = ['id', 'user1_id', 'user2_id', 'updated_at', 'last_message']
         
-    def get_last_message(self, obj):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_last_message(self, obj) -> str:
         last_message = obj.last_message
         return last_message.content if last_message else None
         
@@ -35,8 +37,10 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         )
         
 class MessageSerializer(serializers.ModelSerializer):
-    avatar = serializers.CharField(read_only=True)
-    sender = serializers.CharField(read_only=True)
+    avatar = serializers.CharField(read_only=True, help_text="발신자의 아바타 이미지 URL")
+    sender = serializers.CharField(read_only=True, help_text="메시지 발신자의 닉네임")
+    content = serializers.CharField(help_text="메시지 내용")
+    timestamp = serializers.DateTimeField(read_only=True, help_text="메시지가 전송된 시간")
     
     class Meta:
         model = Message

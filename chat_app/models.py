@@ -8,7 +8,8 @@ class ChatRoom(models.Model):
     
     @property
     def last_message(self):
-        return self.message_set.order_by('-timestamp').first()
+        messages = Message.objects.filter(chatroom=self).order_by('-timestamp')
+        return messages.first() if messages.exists() else None
     
     class Meta:
         constraints = [

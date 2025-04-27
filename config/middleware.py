@@ -8,6 +8,10 @@ from urllib.parse import parse_qs
 
 class CustomHttpMiddleware(MiddlewareMixin):
     def process_request(self, request):
+        # API 문서 관련 경로는 인증 우회
+        if '/api/schema' in request.path or '/api/docs' in request.path:
+            return None
+            
         token_line = request.headers.get("Authorization")
         if not token_line:
             return JsonResponse({"error": "Authentication token missing."}, status=401)
