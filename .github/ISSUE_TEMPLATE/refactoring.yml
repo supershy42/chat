@@ -7,14 +7,6 @@ body:
       value: |
         작성 예시 : "[REFACTORING] 경로 계산 로직 최적화"
   - type: textarea
-    id: refactoring-description
-    attributes:
-      label: 작업 설명
-      description: 어떤 코드를 수정하시는 건지 적어주세요.
-      placeholder: 설명을 적어주세요.
-    validations:
-      required: true
-  - type: textarea
     id: reproduction
     attributes:
       label: 수정 이유 (선택 사항)
@@ -22,3 +14,11 @@ body:
       placeholder: 설명을 적어주세요.
     validations:
       required: false
+  - type: textarea
+    id: refactoring-description
+    attributes:
+      label: 작업 설명
+      description: 어떤 코드를 수정하시는 건지 적어주세요.
+      placeholder: 설명을 적어주세요.
+    validations:
+      required: true
